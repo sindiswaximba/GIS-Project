@@ -1,0 +1,203 @@
+---
+title: "GIS Project"
+author: "SS Ximba"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<br>
+
+## Introduction
+
+In South Africa, intertidal fish communities are influenced by geographical patterns linked to different marine regions, especially along the temperate coastline of the Western Cape. The distribution, abundance and diversity of rock-pool fishes in this region have been shown to vary in response to environmental and spatial factors (Bennett and Griffiths, 1984). Species like *Clinus superciliosus* (super klipfish) and *Psammogobius knysnaensis* (Knysna sandgoby) are common in shallow coastal and estuarine areas (Griffiths, 2000). They serve as good examples for studying spatial occurrence patterns.
+
+This GIS analysis combines species occurrence records from the Global Biodiversity Information Facility (GBIF) with spatial mapping tools in R to show where these two species are found across South Africa. The occurrence records were filtered to include only georeferenced observations, cleaned the data to get rid of incorrect coordinates, and converted it into spatial objects using the sf package. The interactive maps were created with mapview and leaflet to visually compare species distributions.
+
+In addition, the locations of three focal rock pool sampling sites in Cape Town (Mouille Point, Schusters Bay, and Dalebrook) were mapped as spatial reference points. These sites represent areas from the Intertidal Fish Survey where field-based ecological data were collected by Prof Colin Attwood and his team few years ago. By integrating GBIF-derived occurrence data with field sampling locations, this project demonstrates how GIS tools can be used to contextualise local ecological studies within broader regional distribution patterns.
+ 
+<br>
+
+#### Load required packages
+
+```{r}
+library(rgbif)      # Access and download species occurrence data from GBIF
+library(tidyverse)  # Data manipulation tools
+library(dplyr)      # Data manipulation
+library(sf)         # Handling spatial (vector) data
+library(leaflet)    # Interactive web maps
+library(htmltools)  # Formatting popups
+library(mapview)    # Quick interactive spatial visualisation
+library(leafpop)    # Create popup tables for mapview
+```
+<br>
+
+### Species 1: *Clinus superciliosus*
+
+```{r}
+#### Obtain the GBIF taxon key (unique species ID)
+
+taxon1 <- name_backbone("Clinus superciliosus")$speciesKey
+
+#### Download up to 5000 occurrence records for South Africa, restricted to observations with valid geographic coordinates for spatial analysis
+
+occ1 <- occ_search(taxonKey = taxon1,
+                  country = "ZA",   # South Africa
+                  limit = 5000,
+                  hasCoordinate = TRUE)
+
+#### Extract the occurrence data as a dataframe and inspect first few rows
+
+df1 <- occ1$data
+head(df1)
+
+#### Remove records with incorrect or suspicious coordinates
+##### These were manually identified as problematic observations
+
+df1<-df1[-c(1059,868,867,866,1011,1045,229,1055,991,1111,1113,854,879,1104,310,1049,451,984,888,969,870,1103,873,1037,1089,1042,1094,1096,1020,975,961,865,1088),]
+
+#### Convert dataframe into a spatial object (sf class)
+##### Coordinates are longitude and latitude in WGS84 (EPSG:4326)
+
+df1 <- st_as_sf(df1, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+
+#### Confirm that the object is spatial
+
+class(df1)
+```
+<br>
+
+### Species 2: *Psammogobius knysnaensis*
+
+```{r}
+#### Obtain the GBIF taxon key (unique species ID)
+
+taxon2 <- name_backbone("Psammogobius knysnaensis")$speciesKey
+
+#### Download up to 5000 occurrence records for South Africa, restricted to observations with valid geographic coordinates for spatial analysis
+
+occ2 <- occ_search(taxonKey = taxon2,
+                   country = "ZA",   # South Africa
+                   limit = 5000,
+                   hasCoordinate = TRUE)
+
+#### Extract the occurrence data as a dataframe and inspect first few rows
+df2 <- occ2$data
+head(df2)
+
+#### Remove records with incorrect or suspicious coordinates
+
+df2<-df2[-c(234,9,184,195,59,225,159,117,325,327,118,57,159,220,219,218,217,216),]
+
+#### Convert dataframe into a spatial object (sf class)
+
+df2 <- st_as_sf(df2, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+
+#### Confirm that the object is spatial
+
+class(df2)
+```
+<br>
+
+### Create Spatial Distribution Map
+
+```{r}
+#### Create initial interactive map layer for *Clinus superciliosus*
+
+m<-mapview(df1,
+           col.regions = 'blue',
+        popup = 
+          popupTable(df1,
+                     zcol = c("species")),
+        legend = FALSE) 
+
+#### Add second species layer for *Psammogobius knysnaensis*
+
+m<-m+ mapview(df2,
+              col.regions ='red',
+                 popup = 
+                   popupTable(df2,
+                              zcol = c("species")),
+                 legend = FALSE)  
+
+#### Add custom legend to explain colors
+
+m@map<-m@map %>%
+  addLegend(position= 'topleft',
+            title = 'Fish species',
+            colors = c('blue','red'),
+            labels = c("Clinus superciliosus","Psammogobius knysnaensis"))
+
+#### Display final interactive map
+
+m
+```
+
+**Figure 1**: Spatial Distribution of *Clinus superciliosus* and *Psammogobius knysnaensis* in South Africa
+
+<br>
+
+### Create Rock Pool Sampling Sites Map
+
+```{r}
+sites <- data.frame(
+  Site = c("Mouille Point", "Schusters Bay", "Dalebrook"),
+  Latitude = c(-33.89947, -34.19917, -34.12403),
+  Longitude = c(18.40345, 18.37222, 18.45292)
+)
+
+#### Convert to spatial (sf) object
+
+sites_sf <- st_as_sf(
+  sites,
+  coords = c("Longitude", "Latitude"),
+  crs = 4326
+)
+
+#### Assign colors for each site
+
+site_pal <- colorFactor(
+  palette = c("red", "blue", "green"),
+  domain = sites$Site
+)
+
+#### Create interactive map
+
+leaflet(data = sites_sf) %>%
+  
+#### Add base map tiles (OpenStreetMap)
+addTiles() %>%
+  
+#### Add circle markers for each site
+  
+addCircleMarkers(
+  radius = 8,
+  color = ~site_pal(Site),
+  stroke = TRUE,
+  fillOpacity = 0.8,
+  popup = ~paste0("<b>Sampling Site:</b> ", Site)
+) %>%
+  
+#### Add legend explaining colors
+  
+addLegend(
+  "topleft",
+  pal = site_pal,
+  values = ~Site,
+  title = "Sampling Sites"
+)
+```
+
+**Figure 2**: Rock Pool Fish Sampling Sites Along the Cape Town Coast
+
+<br>
+
+## References
+
+Bennett, B.A. & Griffiths, C.L. (1984) ‘Factors affecting the distribution, abundance and diversity of rock-pool fishes on the Cape Peninsula, South Africa. *South African Journal of Zoology*. 19(2):97-104. DOI: 10.1080/02541858.1984.11447865.
+
+GBIF.org (4 March 2026) GBIF Occurrence Download https://doi.org/10.15468/dl.j3r66d - For *Clinus superciliosus*
+
+GBIF.org (4 March 2026) GBIF Occurrence Download https://doi.org/10.15468/dl.8k7hhg - For *Psammogobius knysnaensis*
+
+Griffiths, M.H. (2000) Long-term trends in catch and effort of commercial linefish off South Africa’s Cape Province: snapshots of the 20th century. *South African Journal of Marine Science*. 22:81-110. DOI: 10.2989/025776100784125663.
+
+<br>
