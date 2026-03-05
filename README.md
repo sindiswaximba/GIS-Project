@@ -6,7 +6,8 @@ In addition, the coordinates of three rock pool sampling sites from the Intertid
 
 The interactive maps were created to show the distribution of both fish species across South Africa using the mapview package. The second interactive map was made with the leaflet package to display the three sampling sites in Cape Town. These GIS-based visualizations allow for comparison between regional species occurrence patterns and the locations of the field sampling sites. All analyses and visualizations were conducted in R using several packages: rgbif for downloading GBIF records, tidyverse and dplyr for data manipulation, sf for spatial data handling, and mapview and leaflet for interactive mapping.
 
-During the data cleaning process, several occurrence records were identified as problematic because they shared identical geographic coordinates. Four records (215, 876, 1011 and 1053) could not be permanently removed because when one point was deleted another record with the same geometry appeared underneath it. One of the classmates aslo tried to assist removing them, but we just could'nt.
+During the data cleaning process, several occurrence records were identified as problematic because they shared identical geographic coordinates. Four records (215, 876, 1011 and 1053) could not be permanently removed because when one point was deleted another record with the same geometry appeared underneath it. One of the classmates aslo tried to assist removing them, but we just couldn't.
 
 Link to html: [https://rawcdn.githack.com/sindiswaximba/GIS-Project/cd26a8242d05692fc9d8bf1d7b3bdf42317a28b7/GIS-Project.html]
+
 
